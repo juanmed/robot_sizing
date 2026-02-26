@@ -14,7 +14,7 @@ PAYLOAD_LINK_NAME = "payload"
 
 # q(t) = A*sin(w*t), with A = pi/2 (±90 deg).
 # Choose w so max |qdot| = A*w = 1 rad/s.
-AMP_RAD = math.pi / 2.0
+AMP_RAD = math.pi / 3.0
 OMEGA = 1.0 / AMP_RAD
 
 # Position-control settings (tune if tracking looks too soft/stiff).
@@ -23,15 +23,14 @@ VELOCITY_GAINS = [0.45, 0.40, 0.35]
 MAX_FORCES = [40.0, 30.0, 25.0]
 
 
-def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload_speed_log):
-    # Plot torque, velocity, acceleration, and target position for joint0/1/2.
-    fig, axes = plt.subplots(4, 1, figsize=(11, 11), sharex=True)
+def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, actual_pos_log, payload_speed_log):
+    # Plot torque, velocity, and acceleration for joint0/1/2.
+    fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
 
     for i, name in enumerate(JOINT_NAMES):
         axes[0].plot(time_log, torque_log[i], label=name)
         axes[1].plot(time_log, vel_log[i], label=name)
         axes[2].plot(time_log, acc_log[i], label=name)
-        axes[3].plot(time_log, target_pos_log[i], label=name)
 
     axes[0].set_ylabel("Torque [Nm]")
     axes[0].set_xlabel("Time [s]")
@@ -39,9 +38,6 @@ def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload
     axes[1].set_xlabel("Time [s]")
     axes[2].set_ylabel("Ang. acceleration [rad/s^2]")
     axes[2].set_xlabel("Time [s]")
-    axes[3].set_ylabel("Target pos [rad]")
-    axes[3].set_xlabel("Time [s]")
-
     for ax in axes:
         ax.grid(True, alpha=0.3)
         ax.legend(loc="upper right")
@@ -59,6 +55,18 @@ def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload
     plt.legend(loc="upper right")
     plt.title("Payload linear speed")
     plt.tight_layout()
+
+    # Plot target vs actual joint position in separate subplots (one per joint).
+    fig_pos, axes_pos = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
+    for i, name in enumerate(JOINT_NAMES):
+        axes_pos[i].plot(time_log, target_pos_log[i], "--", label=f"{name} target")
+        axes_pos[i].plot(time_log, actual_pos_log[i], label=f"{name} actual")
+        axes_pos[i].set_ylabel("Position [rad]")
+        axes_pos[i].set_xlabel("Time [s]")
+        axes_pos[i].grid(True, alpha=0.3)
+        axes_pos[i].legend(loc="upper right")
+    fig_pos.suptitle("Target vs actual joint position")
+    fig_pos.tight_layout()
 
     plt.show()
 
@@ -101,6 +109,7 @@ def main():
     vel_log = [[], [], []]
     acc_log = [[], [], []]
     target_pos_log = [[], [], []]
+    actual_pos_log = [[], [], []]
     payload_speed_log = []
 
     # 5) Main simulation loop (10 s at 0.01 s step).
@@ -127,6 +136,7 @@ def main():
 
         # 5c) Read motor torque and joint velocity, then estimate acceleration.
         joint_states = p.getJointStates(robot_id, joint_indices)
+        joint_pos = [s[0] for s in joint_states]
         joint_vel = [s[1] for s in joint_states]
         joint_torque = [s[3] for s in joint_states]
         joint_acc = [(joint_vel[i] - prev_vel[i]) / DT for i in range(3)]
@@ -145,12 +155,13 @@ def main():
             vel_log[i].append(joint_vel[i])
             acc_log[i].append(joint_acc[i])
             target_pos_log[i].append(target_pos)
+            actual_pos_log[i].append(joint_pos[i])
 
         time.sleep(DT)
 
     # 6) Close simulation and display plots.
     p.disconnect(client)
-    plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload_speed_log)
+    plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, actual_pos_log, payload_speed_log)
 
 
 if __name__ == "__main__":
