@@ -7,30 +7,31 @@ import pybullet_data
 
 
 # Global simulation settings requested by the spec.
-SIM_DURATION = 2.0
+SIM_DURATION = 10.0
 DT = 0.01
 JOINT_NAMES = ["joint0", "joint1", "joint2"]
 PAYLOAD_LINK_NAME = "payload"
 
 # q(t) = A*sin(w*t), with A = pi/2 (±90 deg).
 # Choose w so max |qdot| = A*w = 1 rad/s.
-AMP_RAD = math.pi / 6.0
+AMP_RAD = math.pi / 2.0
 OMEGA = 1.0 / AMP_RAD
 
 # Position-control settings (tune if tracking looks too soft/stiff).
-POSITION_GAINS = [2, 2, 2]
-VELOCITY_GAINS = [3, 3, 3]
-MAX_FORCES = [200.0, 200.0, 200.0]
+POSITION_GAINS = [0.18, 0.16, 0.14]
+VELOCITY_GAINS = [0.45, 0.40, 0.35]
+MAX_FORCES = [40.0, 30.0, 25.0]
 
 
-def plot_results(time_log, torque_log, vel_log, acc_log, payload_speed_log):
-    # Plot 3 requested signals for joint0/1/2 using matplotlib.
-    fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
+def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload_speed_log):
+    # Plot torque, velocity, acceleration, and target position for joint0/1/2.
+    fig, axes = plt.subplots(4, 1, figsize=(11, 11), sharex=True)
 
     for i, name in enumerate(JOINT_NAMES):
         axes[0].plot(time_log, torque_log[i], label=name)
         axes[1].plot(time_log, vel_log[i], label=name)
         axes[2].plot(time_log, acc_log[i], label=name)
+        axes[3].plot(time_log, target_pos_log[i], label=name)
 
     axes[0].set_ylabel("Torque [Nm]")
     axes[0].set_xlabel("Time [s]")
@@ -38,6 +39,8 @@ def plot_results(time_log, torque_log, vel_log, acc_log, payload_speed_log):
     axes[1].set_xlabel("Time [s]")
     axes[2].set_ylabel("Ang. acceleration [rad/s^2]")
     axes[2].set_xlabel("Time [s]")
+    axes[3].set_ylabel("Target pos [rad]")
+    axes[3].set_xlabel("Time [s]")
 
     for ax in axes:
         ax.grid(True, alpha=0.3)
@@ -66,6 +69,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     p.setGravity(0, 0, -9.81)
     p.setTimeStep(DT)
+    p.setPhysicsEngineParameter(numSolverIterations=120)
 
     # 2) Load environment and robot model.
     p.loadURDF("plane.urdf")
@@ -84,6 +88,10 @@ def main():
     joint_indices = [joint_name_to_index[name] for name in JOINT_NAMES]
     payload_link_index = link_name_to_index[PAYLOAD_LINK_NAME]
 
+    # Initialize joints at start of trajectory to reduce startup transients.
+    for ji in joint_indices:
+        p.resetJointState(robot_id, ji, targetValue=0.0, targetVelocity=1.0)
+
     # 4) Initialize logging containers.
     num_steps = int(SIM_DURATION / DT)
     prev_vel = [0.0, 0.0, 0.0]
@@ -92,6 +100,7 @@ def main():
     torque_log = [[], [], []]
     vel_log = [[], [], []]
     acc_log = [[], [], []]
+    target_pos_log = [[], [], []]
     payload_speed_log = []
 
     # 5) Main simulation loop (10 s at 0.01 s step).
@@ -99,8 +108,8 @@ def main():
         t_now = step * DT
 
         # 5a) Generate sinusoidal joint targets in [-90, +90] deg.
-        target_pos = AMP_RAD * math.cos(t_now)
-        target_vel = AMP_RAD * OMEGA * math.cos(t_now)  # peak 1 rad/s
+        target_pos = AMP_RAD * math.sin(OMEGA * t_now)
+        target_vel = AMP_RAD * OMEGA * math.cos(OMEGA * t_now)  # peak 1 rad/s
 
         # 5b) Command all 3 actuated joints in one API call.
         p.setJointMotorControlArray(
@@ -108,7 +117,7 @@ def main():
             jointIndices=joint_indices,
             controlMode=p.POSITION_CONTROL,
             targetPositions=[target_pos, target_pos, target_pos],
-            #targetVelocities=[target_vel, target_vel, target_vel],
+            targetVelocities=[target_vel, target_vel, target_vel],
             forces=MAX_FORCES,
             positionGains=POSITION_GAINS,
             velocityGains=VELOCITY_GAINS,
@@ -135,12 +144,13 @@ def main():
             torque_log[i].append(joint_torque[i])
             vel_log[i].append(joint_vel[i])
             acc_log[i].append(joint_acc[i])
+            target_pos_log[i].append(target_pos)
 
         time.sleep(DT)
 
     # 6) Close simulation and display plots.
     p.disconnect(client)
-    plot_results(time_log, torque_log, vel_log, acc_log, payload_speed_log)
+    plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, payload_speed_log)
 
 
 if __name__ == "__main__":
