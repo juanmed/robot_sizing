@@ -12,6 +12,9 @@
   <material name="blue">
     <color rgba="0.2 0.2 0.8 1.0"/>
   </material>
+  <material name="purple">
+    <color rgba="0.6 0.2 0.8 1.0"/>
+  </material>
 
   <!-- Ground link rigidly attached to simulator world -->
   <link name="ground_link">
@@ -101,6 +104,28 @@
     </inertial>
   </link>
 
+  <!-- Payload: 1 kg sphere of radius 0.05 m at the tip of link3 -->
+  <link name="payload">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+      <material name="purple"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
 
   <!-- joint0: ground_link -> link1, revolute about Z -->
   <joint name="joint0" type="revolute">
@@ -127,5 +152,12 @@
     <origin xyz="0.3 0 0" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-3.14159" upper="3.14159" effort="30" velocity="2.0"/>
+  </joint>
+
+  <!-- Fixed payload joint at the far end of link3 -->
+  <joint name="link3_to_payload" type="fixed">
+    <parent link="link3"/>
+    <child link="payload"/>
+    <origin xyz="0.3 0 0" rpy="0 0 0"/>
   </joint>
 </robot>
