@@ -14,7 +14,7 @@ PAYLOAD_LINK_NAME = "payload"
 
 # q(t) = A*sin(w*t), with A = pi/2 (±90 deg).
 # Choose w so max |qdot| = A*w = 1 rad/s.
-AMP_RAD = math.pi / 3.0
+AMP_RAD = math.pi / 10.0
 OMEGA = 1.0 / AMP_RAD
 
 # Position-control settings (tune if tracking looks too soft/stiff).
