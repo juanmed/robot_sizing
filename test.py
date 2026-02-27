@@ -20,7 +20,7 @@ OMEGA = 1.0 / AMP_RAD
 # Position-control settings (tune if tracking looks too soft/stiff).
 POSITION_GAINS = [0.18, 0.16, 0.14]
 VELOCITY_GAINS = [0.45, 0.40, 0.35]
-MAX_FORCES = [40.0, 30.0, 25.0]
+MAX_FORCES = [800.0, 800.0, 800.0]
 
 
 def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, actual_pos_log, payload_speed_log):
@@ -28,9 +28,26 @@ def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, actual_
     fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
 
     for i, name in enumerate(JOINT_NAMES):
-        axes[0].plot(time_log, torque_log[i], label=name)
+        torque_line, = axes[0].plot(time_log, torque_log[i], label=name)
         axes[1].plot(time_log, vel_log[i], label=name)
-        axes[2].plot(time_log, acc_log[i], label=name)
+        acc_line, = axes[2].plot(time_log, acc_log[i], label=name)
+
+        avg_torque = sum(abs(v) for v in torque_log[i]) / len(torque_log[i])
+        avg_acc = sum(abs(v) for v in acc_log[i]) / len(acc_log[i])
+        axes[0].axhline(
+            avg_torque,
+            linestyle=":",
+            color=torque_line.get_color(),
+            linewidth=1.8,
+            label=f"{name} avg",
+        )
+        axes[2].axhline(
+            avg_acc,
+            linestyle=":",
+            color=acc_line.get_color(),
+            linewidth=1.8,
+            label=f"{name} avg",
+        )
 
     axes[0].set_ylabel("Torque [Nm]")
     axes[0].set_xlabel("Time [s]")
