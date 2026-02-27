@@ -18,9 +18,9 @@ AMP_RAD = math.pi / 3.0
 OMEGA = 1.0 / AMP_RAD
 
 # Position-control settings (tune if tracking looks too soft/stiff).
-POSITION_GAINS = [1.8, 1.6, 1.4]
-VELOCITY_GAINS = [4.5, 4.0, 3.5]
-MAX_FORCES = [1000.0, 3000.0, 2500.0]
+POSITION_GAINS = [0.18, 0.16, 0.14]
+VELOCITY_GAINS = [0.45, 0.40, 0.35]
+MAX_FORCES = [40.0, 30.0, 25.0]
 
 
 def plot_results(time_log, torque_log, vel_log, acc_log, target_pos_log, actual_pos_log, payload_speed_log):
